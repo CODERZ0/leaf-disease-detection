@@ -1,5 +1,4 @@
-Set-Content -Path .\requirements.txt -Value @"
-streamlit
+﻿streamlit
 tensorflow-cpu==2.20.0
 numpy
 pandas
@@ -7,4 +6,3 @@ scikit-learn
 pillow
 matplotlib
 huggingface-hub
-"@ -Encoding UTF8
