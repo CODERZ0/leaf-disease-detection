@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 import json
 import os
+import cv2
 from huggingface_hub import hf_hub_download
 
 st.set_page_config(page_title="Leaf Disease Detector", layout="centered")
@@ -13,6 +14,7 @@ st.write("Upload a leaf image OR scan using camera and the model will predict th
 MODEL_REPO = "CODERZ0/leaf-disease-model"
 MODEL_FILENAME = "leaf_model_classweighted.keras"
 LOCAL_MODEL_PATH = os.path.join("models", MODEL_FILENAME)
+
 
 @st.cache_resource(show_spinner=False)
 def load_model_and_labels():
@@ -72,6 +74,21 @@ if image is not None:
 
     st.image(image, caption="Leaf Image", use_column_width=True)
 
+    # ---------- Leaf Validation (Green Detection) ----------
+    img_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+    hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)
+
+    lower_green = np.array([25, 40, 40])
+    upper_green = np.array([90, 255, 255])
+
+    mask = cv2.inRange(hsv, lower_green, upper_green)
+    green_ratio = np.sum(mask > 0) / mask.size
+
+    if green_ratio < 0.05:
+        st.error("❌ Invalid image. Please upload a leaf image.")
+        st.stop()
+
+    # ---------- Model Prediction ----------
     size = (224, 224)
     img_resized = image.resize(size)
 
@@ -81,6 +98,13 @@ if image is not None:
     with st.spinner("Predicting..."):
         preds = model.predict(x)
         probs = preds[0]
+
+        max_prob = np.max(probs)
+
+        # Confidence threshold
+        if max_prob < 0.60:
+            st.error("❌ This does not appear to be a leaf image.")
+            st.stop()
 
         top_k = min(5, probs.shape[0])
         top_idx = np.argsort(probs)[-top_k:][::-1]
