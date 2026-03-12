@@ -97,6 +97,11 @@ if image is not None:
 
     if green_ratio < 0.05:
         st.error("❌ Invalid image. Please scan a leaf.")
+
+        if st.button("🔄 Scan Again"):
+            st.session_state.open_camera = False
+            st.rerun()
+
         st.stop()
 
     # -------- Model Prediction --------
@@ -120,6 +125,11 @@ if image is not None:
             st.write(f"- **{label}** — {probs[idx]:.3f}")
 
     st.success("Done ✅")
+
+    # -------- Scan Again Button --------
+    if st.button("🔄 Scan Again"):
+        st.session_state.open_camera = False
+        st.rerun()
 
 else:
     st.info("Upload a leaf image or click '📷 Scan Leaf' to take a photo.")
