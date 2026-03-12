@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 import json
 import os
+import cv2
 from huggingface_hub import hf_hub_download
 
 st.set_page_config(page_title="Leaf Disease Detector", layout="centered")
@@ -13,6 +14,7 @@ st.write("Upload a leaf image OR scan using camera and the model will predict th
 MODEL_REPO = "CODERZ0/leaf-disease-model"
 MODEL_FILENAME = "leaf_model_classweighted.keras"
 LOCAL_MODEL_PATH = os.path.join("models", MODEL_FILENAME)
+
 
 @st.cache_resource(show_spinner=False)
 def load_model_and_labels():
@@ -54,17 +56,14 @@ with st.spinner("Loading model (this happens once)..."):
 
 uploaded = st.file_uploader("Upload a leaf image (jpg/png)", type=["jpg", "jpeg", "png"])
 
-# Session state for camera toggle
 if "open_camera" not in st.session_state:
     st.session_state.open_camera = False
 
-# Camera button
 if st.button("📷 Scan Leaf"):
     st.session_state.open_camera = True
 
 camera_photo = None
 
-# Show camera only when button pressed
 if st.session_state.open_camera:
     camera_photo = st.camera_input("Take a picture of the leaf")
 
@@ -86,6 +85,21 @@ if image is not None:
 
     st.image(image, caption="Leaf Image", use_column_width=True)
 
+    # -------- Leaf validation (green detection) --------
+    img_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+    hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)
+
+    lower_green = np.array([25, 40, 40])
+    upper_green = np.array([90, 255, 255])
+
+    mask = cv2.inRange(hsv, lower_green, upper_green)
+    green_ratio = np.sum(mask > 0) / mask.size
+
+    if green_ratio < 0.05:
+        st.error("❌ Invalid image. Please scan a leaf.")
+        st.stop()
+
+    # -------- Model Prediction --------
     size = (224, 224)
     img_resized = image.resize(size)
 
